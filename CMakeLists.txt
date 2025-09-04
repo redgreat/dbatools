@@ -2,64 +2,61 @@ cmake_minimum_required(VERSION 3.16)
 
 project(dbatools VERSION 1.0.0 LANGUAGES CXX)
 
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 查找Qt6组件
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network)
 
-# 启用Qt6的自动MOC、UIC和RCC
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTORCC ON)
-
-# 设置源文件
-set(SOURCES
-    src/main.cpp
-    src/loginwindow.cpp
-    src/mainwindow.cpp
-    src/stringformatter.cpp
-    src/apimanager.cpp
+set(PROJECT_SOURCES
+        main.cpp
+        mainwindow.cpp
+        mainwindow.h
+        mainwindow.ui
+        loginwindow.cpp
+        loginwindow.h
+        loginwindow.ui
+        apimanager.cpp
+        apimanager.h
+        stringformatter.cpp
+        stringformatter.h
+        usermanager.cpp
+        usermanager.h
+        usereditor.cpp
+        usereditor.h
+        rolemanager.cpp
+        rolemanager.h
+        roleeditor.cpp
+        roleeditor.h
 )
 
-# 设置头文件
-set(HEADERS
-    src/loginwindow.h
-    src/mainwindow.h
-    src/stringformatter.h
-    src/apimanager.h
-)
-
-# 设置UI文件
-set(UI_FILES
-    ui/loginwindow.ui
-    ui/mainwindow.ui
-    ui/stringformatter.ui
-)
-
-# 创建可执行文件
-add_executable(dbatools
-    ${SOURCES}
-    ${HEADERS}
-    ${UI_FILES}
-)
-
-# 链接Qt6库
-target_link_libraries(dbatools
-    Qt6::Core
-    Qt6::Widgets
-    Qt6::Network
-)
-
-# 设置包含目录
-target_include_directories(dbatools PRIVATE
-    src
-    ui
-)
-
-# Windows特定设置
-if(WIN32)
-    set_target_properties(dbatools PROPERTIES
-        WIN32_EXECUTABLE TRUE
+if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+    qt_add_executable(dbatools
+        MANUAL_FINALIZATION
+        ${PROJECT_SOURCES}
     )
+else()
+    if(ANDROID)
+        add_library(dbatools SHARED
+            ${PROJECT_SOURCES}
+        )
+    else()
+        add_executable(dbatools
+            ${PROJECT_SOURCES}
+        )
+    endif()
+endif()
+
+target_link_libraries(dbatools
+    PRIVATE
+        Qt${QT_VERSION_MAJOR}::Widgets
+        Qt${QT_VERSION_MAJOR}::Network
+)
+
+if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+    qt_finalize_executable(dbatools)
 endif()
