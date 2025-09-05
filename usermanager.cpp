@@ -44,8 +44,8 @@ UserManager::UserManager(ApiManager *apiManager, QWidget *parent)
     connect(m_apiManager, &ApiManager::networkError,
             this, &UserManager::onNetworkError);
     
-    // 初始加载用户列表
-    refreshUserList();
+    // 不在构造时加载用户列表，等待登录成功后再加载
+    // refreshUserList();
 }
 
 /**

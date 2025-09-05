@@ -1,6 +1,6 @@
 [Server]
 # API服务器配置
-url=http://localhost:8080/api
+url=http://localhost:8001/api
 timeout=30
 
 [UI]

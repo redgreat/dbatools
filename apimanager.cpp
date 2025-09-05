@@ -29,11 +29,19 @@ void ApiManager::setBaseUrl(const QString &url)
  */
 void ApiManager::login(const QString &username, const QString &password)
 {
+    qDebug() << "[DEBUG] ApiManager::login called with username:" << username;
+    qDebug() << "[DEBUG] Password length:" << password.length();
+    qDebug() << "[DEBUG] Base URL:" << m_baseUrl;
+    
     QJsonObject loginData;
     loginData["username"] = username;
     loginData["password"] = password;
     
+    qDebug() << "[DEBUG] Login data prepared:" << loginData;
+    qDebug() << "[DEBUG] About to send POST request to /auth/login";
+    
     sendPostRequest("/auth/login", loginData, "login");
+    qDebug() << "[DEBUG] POST request sent";
 }
 
 /**
@@ -210,6 +218,10 @@ void ApiManager::getPermissionList(int skip, int limit)
 void ApiManager::sendPostRequest(const QString &endpoint, const QJsonObject &data, const QString &requestType)
 {
     QUrl url(m_baseUrl + endpoint);
+    qDebug() << "[DEBUG] sendPostRequest - Full URL:" << url.toString();
+    qDebug() << "[DEBUG] sendPostRequest - Request type:" << requestType;
+    qDebug() << "[DEBUG] sendPostRequest - Data:" << data;
+    
     QNetworkRequest request(url);
     
     // 设置请求头
@@ -218,6 +230,7 @@ void ApiManager::sendPostRequest(const QString &endpoint, const QJsonObject &dat
     // 如果有认证令牌，添加到请求头
     if (!m_authToken.isEmpty()) {
         request.setRawHeader("Authorization", ("Bearer " + m_authToken).toUtf8());
+        qDebug() << "[DEBUG] sendPostRequest - Added auth token";
     }
     
     // 设置请求类型标识
@@ -226,13 +239,19 @@ void ApiManager::sendPostRequest(const QString &endpoint, const QJsonObject &dat
     // 转换数据为JSON
     QJsonDocument doc(data);
     QByteArray jsonData = doc.toJson();
+    qDebug() << "[DEBUG] sendPostRequest - JSON data:" << jsonData;
     
     // 发送请求
     QNetworkReply *reply = m_networkManager->post(request, jsonData);
+    qDebug() << "[DEBUG] sendPostRequest - Request sent, reply object created";
     
-    // 连接错误信号
+    // 连接信号
+    connect(reply, &QNetworkReply::finished, [this, reply, requestType]() {
+        handleResponse(reply, requestType);
+    });
     connect(reply, QOverload<QNetworkReply::NetworkError>::of(&QNetworkReply::errorOccurred),
             this, &ApiManager::onNetworkError);
+    qDebug() << "[DEBUG] sendPostRequest - Signals connected";
 }
 
 /**
@@ -257,7 +276,10 @@ void ApiManager::sendGetRequest(const QString &endpoint, const QString &requestT
     // 发送请求
     QNetworkReply *reply = m_networkManager->get(request);
     
-    // 连接错误信号
+    // 连接信号
+    connect(reply, &QNetworkReply::finished, [this, reply, requestType]() {
+        handleResponse(reply, requestType);
+    });
     connect(reply, QOverload<QNetworkReply::NetworkError>::of(&QNetworkReply::errorOccurred),
             this, &ApiManager::onNetworkError);
 }
@@ -288,7 +310,10 @@ void ApiManager::sendPutRequest(const QString &endpoint, const QJsonObject &data
     // 发送请求
     QNetworkReply *reply = m_networkManager->put(request, jsonData);
     
-    // 连接错误信号
+    // 连接信号
+    connect(reply, &QNetworkReply::finished, [this, reply, requestType]() {
+        handleResponse(reply, requestType);
+    });
     connect(reply, QOverload<QNetworkReply::NetworkError>::of(&QNetworkReply::errorOccurred),
             this, &ApiManager::onNetworkError);
 }
@@ -315,7 +340,10 @@ void ApiManager::sendDeleteRequest(const QString &endpoint, const QString &reque
     // 发送请求
     QNetworkReply *reply = m_networkManager->deleteResource(request);
     
-    // 连接错误信号
+    // 连接信号
+    connect(reply, &QNetworkReply::finished, [this, reply, requestType]() {
+        handleResponse(reply, requestType);
+    });
     connect(reply, QOverload<QNetworkReply::NetworkError>::of(&QNetworkReply::errorOccurred),
             this, &ApiManager::onNetworkError);
 }
@@ -341,11 +369,17 @@ void ApiManager::onRequestFinished()
  */
 void ApiManager::onNetworkError(QNetworkReply::NetworkError error)
 {
+    qDebug() << "[DEBUG] onNetworkError called with error code:" << error;
     QNetworkReply *reply = qobject_cast<QNetworkReply*>(sender());
     if (reply) {
         QString errorString = reply->errorString();
+        qDebug() << "[DEBUG] Network error string:" << errorString;
+        qDebug() << "[DEBUG] Request URL:" << reply->url().toString();
+        qDebug() << "[DEBUG] HTTP status code:" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         emit networkError(errorString);
-        qDebug() << "Network error:" << errorString;
+        qDebug() << "[DEBUG] networkError signal emitted";
+    } else {
+        qDebug() << "[DEBUG] No reply object found in onNetworkError";
     }
 }
 
@@ -372,14 +406,47 @@ void ApiManager::handleResponse(QNetworkReply *reply, const QString &requestType
     bool success = (statusCode >= 200 && statusCode < 300);
     
     if (requestType == "login") {
+        qDebug() << "[DEBUG] Processing login response";
+        qDebug() << "[DEBUG] Raw response data:" << responseData;
+        qDebug() << "[DEBUG] HTTP status code:" << statusCode;
+        qDebug() << "[DEBUG] Success flag:" << success;
+        qDebug() << "[DEBUG] JSON response object:" << response;
+        
         QString message = response["message"].toString();
         QString token = response["access_token"].toString();
         
-        if (success && !token.isEmpty()) {
-            m_authToken = token;
+        qDebug() << "[DEBUG] Extracted message:" << message;
+        qDebug() << "[DEBUG] Extracted token:" << token;
+        
+        // 根据API规范，登录成功时应该返回Token对象
+        // 检查是否有token_type字段来确认这是正确的登录响应
+        QString tokenType = response["token_type"].toString();
+        qDebug() << "[DEBUG] Token type:" << tokenType;
+        
+        if (tokenType.isEmpty() && success) {
+            // 如果没有token_type但有access_token，仍然认为是有效响应
+            tokenType = "bearer";
+            qDebug() << "[DEBUG] Using default token type: bearer";
         }
         
+        // 如果没有message字段，使用默认消息
+        if (message.isEmpty()) {
+            message = success ? "登录成功" : "登录失败";
+            qDebug() << "[DEBUG] Using default message:" << message;
+        }
+        
+        if (success && !token.isEmpty()) {
+            m_authToken = token;
+            qDebug() << "[DEBUG] Token saved to m_authToken:" << m_authToken;
+        }
+        
+        qDebug() << "[DEBUG] About to emit loginResult with:";
+        qDebug() << "[DEBUG]   success:" << success;
+        qDebug() << "[DEBUG]   message:" << message;
+        qDebug() << "[DEBUG]   token:" << token;
+        
         emit loginResult(success, message, token);
+        qDebug() << "[DEBUG] loginResult signal emitted";
     }
     else if (requestType == "logout") {
         QString message = success ? "退出登录成功" : "退出登录失败";

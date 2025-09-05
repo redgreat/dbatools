@@ -46,8 +46,8 @@ RoleManager::RoleManager(ApiManager *apiManager, QWidget *parent)
     connect(m_roleTable, &QTableWidget::itemSelectionChanged, this, &RoleManager::onRoleTableSelectionChanged);
     connect(m_roleTable, &QTableWidget::cellDoubleClicked, this, &RoleManager::onRoleTableDoubleClicked);
     
-    // 初始加载角色列表
-    refreshRoleList();
+    // 不在构造时加载角色列表，等待登录成功后再加载
+    // refreshRoleList();
 }
 
 /**

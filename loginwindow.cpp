@@ -188,16 +188,25 @@ void LoginWindow::setupStyles()
  */
 void LoginWindow::onLoginClicked()
 {
+    qDebug() << "[DEBUG] LoginWindow::onLoginClicked() called";
+    
     if (!validateInput()) {
+        qDebug() << "[DEBUG] Input validation failed";
         return;
     }
     
+    qDebug() << "[DEBUG] Input validation passed";
     setLoginState(true);
+    qDebug() << "[DEBUG] Login state set to true";
     
-    QString username = m_usernameEdit->text().trimmed();
+    QString username = m_usernameEdit->text();
     QString password = m_passwordEdit->text();
     
+    qDebug() << "[DEBUG] About to call ApiManager::login with username:" << username;
+    qDebug() << "[DEBUG] Password length:" << password.length();
+    
     m_apiManager->login(username, password);
+    qDebug() << "[DEBUG] ApiManager::login called";
 }
 
 /**
@@ -205,9 +214,16 @@ void LoginWindow::onLoginClicked()
  */
 void LoginWindow::onLoginResult(bool success, const QString &message, const QString &token)
 {
+    qDebug() << "[DEBUG] LoginWindow::onLoginResult called with:";
+    qDebug() << "[DEBUG]   success:" << success;
+    qDebug() << "[DEBUG]   message:" << message;
+    qDebug() << "[DEBUG]   token:" << token;
+    
     setLoginState(false);
+    qDebug() << "[DEBUG] Login state set to false";
     
     if (success) {
+        qDebug() << "[DEBUG] Login successful, processing...";
         m_statusLabel->setText("登录成功!");
         m_statusLabel->setStyleSheet("QLabel { color: #27ae60; font-size: 12px; }");
         
@@ -215,19 +231,23 @@ void LoginWindow::onLoginResult(bool success, const QString &message, const QStr
         QSettings settings;
         settings.setValue("auth/token", token);
         settings.setValue("auth/username", m_usernameEdit->text());
+        qDebug() << "[DEBUG] Auth token and username saved";
         
         // 延迟一下再打开主窗口
         QTimer::singleShot(500, this, [this]() {
+            qDebug() << "[DEBUG] About to open main window and close login window";
             MainWindow *mainWindow = new MainWindow();
             mainWindow->show();
             this->close();
         });
     } else {
+        qDebug() << "[DEBUG] Login failed, showing error message";
         m_statusLabel->setText(message.isEmpty() ? "登录失败" : message);
         m_statusLabel->setStyleSheet("QLabel { color: #e74c3c; font-size: 12px; }");
         m_passwordEdit->clear();
         m_passwordEdit->setFocus();
     }
+    qDebug() << "[DEBUG] LoginWindow::onLoginResult completed";
 }
 
 /**

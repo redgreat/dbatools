@@ -41,6 +41,12 @@ MainWindow::MainWindow(QWidget *parent)
     QString serverUrl = settings.value("server/url", "http://localhost:8001/api").toString();
     m_apiManager->setBaseUrl(serverUrl);
     
+    // 连接API管理器信号
+    connect(m_apiManager, &ApiManager::loginResult,
+            this, &MainWindow::onLoginResult);
+    connect(m_apiManager, &ApiManager::logoutResult,
+            this, &MainWindow::onLogoutResult);
+    
     // 显示欢迎信息
     QString username = settings.value("auth/username", "用户").toString();
     m_statusLabel->setText(QString("欢迎, %1!").arg(username));
@@ -243,6 +249,22 @@ void MainWindow::onLogoutResult(bool success, const QString &message)
     } else {
         m_statusLabel->setText("注销失败: " + message);
         QMessageBox::warning(this, "注销失败", "注销失败: " + message);
+    }
+}
+
+/**
+ * 登录结果处理
+ */
+void MainWindow::onLoginResult(bool success, const QString &message, const QString &token)
+{
+    if (success) {
+        // 登录成功后刷新用户列表和角色列表
+        if (m_userManager) {
+            m_userManager->refreshUserList();
+        }
+        if (m_roleManager) {
+            m_roleManager->refreshRoleList();
+        }
     }
 }
 

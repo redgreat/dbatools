@@ -33,6 +33,7 @@ private slots:
     void onExitClicked();
     void onLogoutClicked();
     void onLogoutResult(bool success, const QString &message);
+    void onLoginResult(bool success, const QString &message, const QString &token);
     void onSettingsClicked();
     
     // 工具相关
