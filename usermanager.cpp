@@ -8,6 +8,7 @@
 #include <QApplication>
 #include <QDateTime>
 #include <QMessageBox>
+#include <QShowEvent>
 
 /**
  * 用户管理器构造函数
@@ -27,6 +28,7 @@ UserManager::UserManager(ApiManager *apiManager, QWidget *parent)
     , m_currentPage(0)
     , m_pageSize(50)
     , m_totalUsers(0)
+    , m_firstShow(true)
 {
     setupUI();
     setupStyles();
@@ -53,6 +55,19 @@ UserManager::UserManager(ApiManager *apiManager, QWidget *parent)
  */
 UserManager::~UserManager()
 {
+}
+
+/**
+ * 显示事件，首次显示时自动加载数据
+ */
+void UserManager::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    
+    if (m_firstShow) {
+        m_firstShow = false;
+        refreshUserList();
+    }
 }
 
 /**
@@ -132,7 +147,7 @@ void UserManager::setupStyles()
 {
     // 设置按钮样式
     QString buttonStyle = "QPushButton { "
-                         "background-color: #3498db; "
+                         "background-color: #0078d4; "
                          "color: white; "
                          "border: none; "
                          "padding: 8px 16px; "
@@ -140,13 +155,13 @@ void UserManager::setupStyles()
                          "font-size: 12px; "
                          "} "
                          "QPushButton:hover { "
-                         "background-color: #2980b9; "
+                         "background-color: #106ebe; "
                          "} "
                          "QPushButton:pressed { "
-                         "background-color: #21618c; "
+                         "background-color: #005a9e; "
                          "} "
                          "QPushButton:disabled { "
-                         "background-color: #bdc3c7; "
+                         "background-color: #555555; "
                          "}";
     
     m_addButton->setStyleSheet(buttonStyle);
@@ -154,31 +169,33 @@ void UserManager::setupStyles()
     m_searchButton->setStyleSheet(buttonStyle);
     
     QString editButtonStyle = buttonStyle;
-    editButtonStyle.replace("#3498db", "#f39c12");
-    editButtonStyle.replace("#2980b9", "#e67e22");
-    editButtonStyle.replace("#21618c", "#d35400");
+    editButtonStyle.replace("#0078d4", "#f39c12");
+    editButtonStyle.replace("#106ebe", "#e67e22");
+    editButtonStyle.replace("#005a9e", "#d35400");
     m_editButton->setStyleSheet(editButtonStyle);
     
     QString deleteButtonStyle = buttonStyle;
-    deleteButtonStyle.replace("#3498db", "#e74c3c");
-    deleteButtonStyle.replace("#2980b9", "#c0392b");
-    deleteButtonStyle.replace("#21618c", "#a93226");
+    deleteButtonStyle.replace("#0078d4", "#e74c3c");
+    deleteButtonStyle.replace("#106ebe", "#c0392b");
+    deleteButtonStyle.replace("#005a9e", "#a93226");
     m_deleteButton->setStyleSheet(deleteButtonStyle);
     
     // 设置搜索框样式
     m_searchEdit->setStyleSheet("QLineEdit { "
                                "padding: 6px; "
-                               "border: 2px solid #bdc3c7; "
+                               "border: 2px solid #555555; "
                                "border-radius: 4px; "
                                "font-size: 12px; "
+                               "background-color: #1e1e1e; "
+                               "color: #ffffff; "
                                "} "
                                "QLineEdit:focus { "
-                               "border-color: #3498db; "
+                               "border-color: #0078d4; "
                                "}");
     
     // 设置状态标签样式
-    m_statusLabel->setStyleSheet("QLabel { color: #2c3e50; font-size: 12px; }");
-    m_totalLabel->setStyleSheet("QLabel { color: #7f8c8d; font-size: 12px; }");
+    m_statusLabel->setStyleSheet("QLabel { color: #ffffff; font-size: 12px; }");
+    m_totalLabel->setStyleSheet("QLabel { color: #ffffff; font-size: 12px; }");
 }
 
 /**
@@ -212,17 +229,25 @@ void UserManager::setupTable()
     
     // 设置表格样式
     m_userTable->setStyleSheet("QTableWidget { "
-                              "gridline-color: #ecf0f1; "
-                              "background-color: white; "
-                              "alternate-background-color: #f8f9fa; "
+                              "gridline-color: #555555; "
+                              "background-color: #1e1e1e; "
+                              "alternate-background-color: #2b2b2b; "
+                              "color: #ffffff; "
                               "} "
                               "QTableWidget::item { "
                               "padding: 8px; "
                               "border: none; "
+                              "color: #ffffff; "
                               "} "
                               "QTableWidget::item:selected { "
-                              "background-color: #3498db; "
+                              "background-color: #0078d4; "
                               "color: white; "
+                              "} "
+                              "QHeaderView::section { "
+                              "background-color: #2b2b2b; "
+                              "color: #ffffff; "
+                              "padding: 8px; "
+                              "border: 1px solid #555555; "
                               "}");
 }
 

@@ -34,6 +34,7 @@ private slots:
     void onLogoutClicked();
     void onLogoutResult(bool success, const QString &message);
     void onLoginResult(bool success, const QString &message, const QString &token);
+    void onTokenExpired();
     void onSettingsClicked();
     
     // 工具相关
@@ -42,6 +43,9 @@ private slots:
     // 管理功能
     void onUserManagementClicked();
     void onRoleManagementClicked();
+    
+    // 标签页切换
+    void onTabChanged(int index);
 
 private:
     // UI组件

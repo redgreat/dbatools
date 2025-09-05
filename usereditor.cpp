@@ -163,18 +163,19 @@ void UserEditor::setupUI()
 void UserEditor::setupStyles()
 {
     // 设置对话框样式
-    setStyleSheet("QDialog { background-color: #f8f9fa; }");
+    setStyleSheet("QDialog { background-color: #1e1e1e; color: #ffffff; }");
     
     // 设置输入框样式
     QString inputStyle = "QLineEdit { "
                         "padding: 8px; "
-                        "border: 2px solid #e9ecef; "
+                        "border: 2px solid #555555; "
                         "border-radius: 4px; "
                         "font-size: 12px; "
-                        "background-color: white; "
+                        "background-color: #1e1e1e; "
+                        "color: #ffffff; "
                         "} "
                         "QLineEdit:focus { "
-                        "border-color: #3498db; "
+                        "border-color: #0078d4; "
                         "}";
     
     m_usernameEdit->setStyleSheet(inputStyle);
@@ -186,27 +187,30 @@ void UserEditor::setupStyles()
     m_isActiveCheck->setStyleSheet("QCheckBox { "
                                   "font-size: 12px; "
                                   "spacing: 8px; "
+                                  "color: #ffffff; "
                                   "}");
     
     // 设置列表样式
     m_rolesList->setStyleSheet("QListWidget { "
-                              "border: 2px solid #e9ecef; "
+                              "border: 2px solid #555555; "
                               "border-radius: 4px; "
-                              "background-color: white; "
+                              "background-color: #2b2b2b; "
+                              "color: #ffffff; "
                               "font-size: 12px; "
                               "} "
                               "QListWidget::item { "
                               "padding: 6px; "
-                              "border-bottom: 1px solid #f1f3f4; "
+                              "border-bottom: 1px solid #555555; "
+                              "color: #ffffff; "
                               "} "
                               "QListWidget::item:selected { "
-                              "background-color: #3498db; "
+                              "background-color: #0078d4; "
                               "color: white; "
                               "}");
     
     // 设置按钮样式
     QString okButtonStyle = "QPushButton { "
-                           "background-color: #28a745; "
+                           "background-color: #0078d4; "
                            "color: white; "
                            "border: none; "
                            "padding: 10px 20px; "
@@ -215,14 +219,14 @@ void UserEditor::setupStyles()
                            "font-weight: bold; "
                            "} "
                            "QPushButton:hover { "
-                           "background-color: #218838; "
+                           "background-color: #106ebe; "
                            "} "
                            "QPushButton:pressed { "
-                           "background-color: #1e7e34; "
+                           "background-color: #005a9e; "
                            "}";
     
     QString cancelButtonStyle = "QPushButton { "
-                               "background-color: #6c757d; "
+                               "background-color: #555555; "
                                "color: white; "
                                "border: none; "
                                "padding: 10px 20px; "
@@ -230,10 +234,10 @@ void UserEditor::setupStyles()
                                "font-size: 12px; "
                                "} "
                                "QPushButton:hover { "
-                               "background-color: #5a6268; "
+                               "background-color: #666666; "
                                "} "
                                "QPushButton:pressed { "
-                               "background-color: #545b62; "
+                               "background-color: #444444; "
                                "}";
     
     m_okButton->setStyleSheet(okButtonStyle);
@@ -241,7 +245,7 @@ void UserEditor::setupStyles()
     
     // 设置状态标签样式
     m_statusLabel->setStyleSheet("QLabel { "
-                                "color: #6c757d; "
+                                "color: #cccccc; "
                                 "font-size: 11px; "
                                 "padding: 4px; "
                                 "}");
@@ -249,16 +253,17 @@ void UserEditor::setupStyles()
     // 设置组框样式
     QString groupBoxStyle = "QGroupBox { "
                            "font-weight: bold; "
-                           "border: 2px solid #e9ecef; "
+                           "border: 2px solid #555555; "
                            "border-radius: 6px; "
                            "margin-top: 10px; "
-                           "background-color: white; "
+                           "background-color: #2b2b2b; "
+                           "color: #ffffff; "
                            "} "
                            "QGroupBox::title { "
                            "subcontrol-origin: margin; "
                            "left: 10px; "
                            "padding: 0 8px 0 8px; "
-                           "color: #495057; "
+                           "color: #ffffff; "
                            "}";
     
     findChild<QGroupBox*>()->setStyleSheet(groupBoxStyle);

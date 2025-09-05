@@ -120,44 +120,62 @@ void StringFormatter::setupUI()
  */
 void StringFormatter::setupStyles()
 {
-    // 设置组框样式
+    // 设置组框样式 - 暗黑主题
     QString groupBoxStyle = "QGroupBox { "
                            "font-weight: bold; "
-                           "border: 2px solid #cccccc; "
+                           "color: #ffffff; "
+                           "border: 2px solid #555555; "
                            "border-radius: 5px; "
                            "margin-top: 10px; "
                            "padding-top: 10px; "
+                           "background-color: #2b2b2b; "
                            "} "
                            "QGroupBox::title { "
                            "subcontrol-origin: margin; "
                            "left: 10px; "
                            "padding: 0 5px 0 5px; "
+                           "color: #ffffff; "
                            "}";
     
     m_controlGroup->setStyleSheet(groupBoxStyle);
     m_inputGroup->setStyleSheet(groupBoxStyle);
     m_outputGroup->setStyleSheet(groupBoxStyle);
     
-    // 设置文本编辑器样式
+    // 设置文本编辑器样式 - 暗黑主题
     QString textEditStyle = "QTextEdit { "
-                           "border: 1px solid #cccccc; "
+                           "background-color: #1e1e1e; "
+                           "color: #ffffff; "
+                           "border: 1px solid #555555; "
                            "border-radius: 4px; "
                            "padding: 8px; "
                            "font-family: 'Consolas', 'Monaco', monospace; "
                            "font-size: 12px; "
                            "line-height: 1.4; "
+                           "selection-background-color: #3399ff; "
                            "} "
                            "QTextEdit:focus { "
-                           "border-color: #3498db; "
+                           "border-color: #0078d4; "
+                           "} "
+                           "QScrollBar:vertical { "
+                           "background-color: #2b2b2b; "
+                           "width: 12px; "
+                           "border-radius: 6px; "
+                           "} "
+                           "QScrollBar::handle:vertical { "
+                           "background-color: #555555; "
+                           "border-radius: 6px; "
+                           "min-height: 20px; "
+                           "} "
+                           "QScrollBar::handle:vertical:hover { "
+                           "background-color: #666666; "
                            "}";
     
     m_inputTextEdit->setStyleSheet(textEditStyle);
-    m_outputTextEdit->setStyleSheet(textEditStyle + 
-                                   "QTextEdit { background-color: #f8f9fa; }");
+    m_outputTextEdit->setStyleSheet(textEditStyle);
     
-    // 设置按钮样式
+    // 设置按钮样式 - 暗黑主题
     QString primaryButtonStyle = "QPushButton { "
-                                "background-color: #3498db; "
+                                "background-color: #0078d4; "
                                 "color: white; "
                                 "border: none; "
                                 "padding: 8px 16px; "
@@ -165,57 +183,69 @@ void StringFormatter::setupStyles()
                                 "font-weight: bold; "
                                 "} "
                                 "QPushButton:hover { "
-                                "background-color: #2980b9; "
+                                "background-color: #106ebe; "
                                 "} "
                                 "QPushButton:pressed { "
-                                "background-color: #21618c; "
+                                "background-color: #005a9e; "
                                 "} "
                                 "QPushButton:disabled { "
-                                "background-color: #bdc3c7; "
+                                "background-color: #555555; "
+                                "color: #888888; "
                                 "}";
     
     QString secondaryButtonStyle = "QPushButton { "
-                                  "background-color: #95a5a6; "
+                                  "background-color: #404040; "
                                   "color: white; "
-                                  "border: none; "
+                                  "border: 1px solid #555555; "
                                   "padding: 8px 16px; "
                                   "border-radius: 4px; "
                                   "} "
                                   "QPushButton:hover { "
-                                  "background-color: #7f8c8d; "
+                                  "background-color: #505050; "
+                                  "border-color: #666666; "
                                   "}";
     
     m_formatButton->setStyleSheet(primaryButtonStyle);
     m_clearButton->setStyleSheet(secondaryButtonStyle);
     m_copyResultButton->setStyleSheet(secondaryButtonStyle);
     
-    // 设置下拉框样式
+    // 设置下拉框样式 - 暗黑主题
     QString comboBoxStyle = "QComboBox { "
-                           "border: 1px solid #cccccc; "
+                           "background-color: #1e1e1e; "
+                           "color: #ffffff; "
+                           "border: 1px solid #555555; "
                            "border-radius: 4px; "
                            "padding: 6px 12px; "
-                           "background-color: white; "
                            "} "
                            "QComboBox:focus { "
-                           "border-color: #3498db; "
+                           "border-color: #0078d4; "
                            "} "
                            "QComboBox::drop-down { "
                            "border: none; "
+                           "background-color: #2b2b2b; "
                            "} "
                            "QComboBox::down-arrow { "
                            "image: none; "
                            "border-left: 5px solid transparent; "
                            "border-right: 5px solid transparent; "
-                           "border-top: 5px solid #666; "
+                           "border-top: 5px solid #ffffff; "
+                           "} "
+                           "QComboBox QAbstractItemView { "
+                           "background-color: #1e1e1e; "
+                           "color: #ffffff; "
+                           "border: 1px solid #555555; "
+                           "selection-background-color: #0078d4; "
+                           "selection-color: #ffffff; "
                            "}";
     
     m_formatTypeCombo->setStyleSheet(comboBoxStyle);
     
-    // 设置状态标签样式
+    // 设置状态标签样式 - 暗黑主题
     m_statusLabel->setStyleSheet("QLabel { "
-                                "color: #2c3e50; "
+                                "color: #ffffff; "
                                 "font-size: 12px; "
                                 "padding: 4px; "
+                                "background-color: transparent; "
                                 "}");
 }
 

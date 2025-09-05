@@ -2,6 +2,9 @@
 #include <QNetworkRequest>
 #include <QJsonParseError>
 #include <QDebug>
+#include <QFile>
+#include <QTextStream>
+#include <QJsonDocument>
 
 /**
  * API管理器构造函数
@@ -22,6 +25,14 @@ ApiManager::ApiManager(QObject *parent)
 void ApiManager::setBaseUrl(const QString &url)
 {
     m_baseUrl = url;
+}
+
+/**
+ * 设置认证令牌
+ */
+void ApiManager::setAuthToken(const QString &token)
+{
+    m_authToken = token;
 }
 
 /**
@@ -275,6 +286,7 @@ void ApiManager::sendGetRequest(const QString &endpoint, const QString &requestT
     
     // 发送请求
     QNetworkReply *reply = m_networkManager->get(request);
+    qDebug() << "[DEBUG] sendGetRequest - Request sent";
     
     // 连接信号
     connect(reply, &QNetworkReply::finished, [this, reply, requestType]() {
@@ -393,6 +405,14 @@ void ApiManager::handleResponse(QNetworkReply *reply, const QString &requestType
     // 检查HTTP状态码
     int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     
+    // 检查Token是否过期（401状态码）
+    if (statusCode == 401) {
+        qDebug() << "[DEBUG] Token expired (401), clearing auth token and emitting tokenExpired signal";
+        m_authToken.clear();
+        emit tokenExpired();
+        return;
+    }
+    
     // 解析JSON响应
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
@@ -473,8 +493,37 @@ void ApiManager::handleResponse(QNetworkReply *reply, const QString &requestType
         }
     }
     else if (requestType == "user_list") {
+        qDebug() << "[DEBUG] Processing user_list response";
+        qDebug() << "[DEBUG] Raw response data:" << responseData;
+        qDebug() << "[DEBUG] HTTP status code:" << statusCode;
+        qDebug() << "[DEBUG] Success flag:" << success;
+        qDebug() << "[DEBUG] JSON response object:" << response;
+        
         if (success) {
-            QList<UserInfo> users = parseUserList(response["items"].toArray());
+            // 检查响应是否是数组格式（直接返回用户列表）还是对象格式（包含items字段）
+            QJsonArray usersArray;
+            
+            // 重新解析响应数据，因为可能是数组而不是对象
+            QJsonParseError parseError;
+            QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
+            
+            if (parseError.error == QJsonParseError::NoError) {
+                if (doc.isArray()) {
+                    // 直接返回的是用户数组
+                    usersArray = doc.array();
+                    qDebug() << "[DEBUG] Parsed as array, items count:" << usersArray.size();
+                } else if (doc.isObject()) {
+                    QJsonObject obj = doc.object();
+                    if (obj.contains("items")) {
+                        // 标准格式：包含items字段的对象
+                        usersArray = obj["items"].toArray();
+                        qDebug() << "[DEBUG] Parsed as object with items, items count:" << usersArray.size();
+                    }
+                }
+            }
+            
+            QList<UserInfo> users = parseUserList(usersArray);
+            qDebug() << "[DEBUG] Parsed users count:" << users.size();
             emit userListResult(true, users, "");
         } else {
             emit userListResult(false, QList<UserInfo>(), response["detail"].toString());
@@ -497,10 +546,30 @@ void ApiManager::handleResponse(QNetworkReply *reply, const QString &requestType
         }
     }
     else if (requestType == "role_list") {
+        qDebug() << "[DEBUG] Processing role_list response";
+        qDebug() << "[DEBUG] Raw response data:" << responseData;
+        qDebug() << "[DEBUG] HTTP status code:" << statusCode;
+        qDebug() << "[DEBUG] Success flag:" << success;
+        qDebug() << "[DEBUG] JSON response object:" << response;
+        
         if (success) {
-            QList<RoleInfo> roles = parseRoleList(response["items"].toArray());
+            QJsonArray rolesArray;
+            if (response.contains("items") && response["items"].isArray()) {
+                // 如果响应包含 items 字段
+                rolesArray = response["items"].toArray();
+                qDebug() << "[DEBUG] Role list items array:" << rolesArray;
+            } else if (doc.isArray()) {
+                // 如果响应直接是数组
+                rolesArray = doc.array();
+                qDebug() << "[DEBUG] Role list direct array:" << rolesArray;
+            }
+            
+            qDebug() << "[DEBUG] Role list items count:" << rolesArray.size();
+            QList<RoleInfo> roles = parseRoleList(rolesArray);
+            qDebug() << "[DEBUG] Parsed roles count:" << roles.size();
             emit roleListResult(true, roles, "");
         } else {
+            qDebug() << "[DEBUG] Role list request failed";
             emit roleListResult(false, QList<RoleInfo>(), response["detail"].toString());
         }
     }

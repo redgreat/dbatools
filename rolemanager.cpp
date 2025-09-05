@@ -5,6 +5,7 @@
 #include <QSplitter>
 #include <QGroupBox>
 #include <QHeaderView>
+#include <QShowEvent>
 
 /**
  * 构造函数
@@ -22,6 +23,7 @@ RoleManager::RoleManager(ApiManager *apiManager, QWidget *parent)
     , m_statusLabel(nullptr)
     , m_totalLabel(nullptr)
     , m_totalRoles(0)
+    , m_firstShow(true)
 {
     setupUI();
     setupStyles();
@@ -55,6 +57,19 @@ RoleManager::RoleManager(ApiManager *apiManager, QWidget *parent)
  */
 RoleManager::~RoleManager()
 {
+}
+
+/**
+ * 显示事件，首次显示时自动加载数据
+ */
+void RoleManager::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    
+    if (m_firstShow) {
+        m_firstShow = false;
+        refreshRoleList();
+    }
 }
 
 /**
@@ -121,47 +136,74 @@ void RoleManager::setupStyles()
     setStyleSheet(
         "QGroupBox {"
         "    font-weight: bold;"
-        "    border: 2px solid #cccccc;"
+        "    border: 2px solid #555555;"
         "    border-radius: 5px;"
         "    margin-top: 1ex;"
         "    padding-top: 10px;"
+        "    background-color: #2b2b2b;"
+        "    color: #ffffff;"
         "}"
         "QGroupBox::title {"
         "    subcontrol-origin: margin;"
         "    left: 10px;"
         "    padding: 0 5px 0 5px;"
+        "    color: #ffffff;"
         "}"
         "QPushButton {"
-        "    background-color: #f0f0f0;"
-        "    border: 1px solid #cccccc;"
+        "    background-color: #0078d4;"
+        "    color: white;"
+        "    border: none;"
         "    border-radius: 4px;"
-        "    padding: 6px 12px;"
+        "    padding: 8px 16px;"
         "    min-width: 80px;"
+        "    font-size: 12px;"
         "}"
         "QPushButton:hover {"
-        "    background-color: #e0e0e0;"
+        "    background-color: #106ebe;"
         "}"
         "QPushButton:pressed {"
-        "    background-color: #d0d0d0;"
+        "    background-color: #005a9e;"
         "}"
         "QPushButton:disabled {"
-        "    background-color: #f5f5f5;"
-        "    color: #999999;"
+        "    background-color: #555555;"
+        "    color: #888888;"
         "}"
         "QLineEdit {"
-        "    border: 1px solid #cccccc;"
+        "    border: 2px solid #555555;"
         "    border-radius: 4px;"
         "    padding: 6px;"
+        "    background-color: #1e1e1e;"
+        "    color: #ffffff;"
+        "    font-size: 12px;"
+        "}"
+        "QLineEdit:focus {"
+        "    border-color: #0078d4;"
         "}"
         "QTableWidget {"
-        "    gridline-color: #e0e0e0;"
-        "    selection-background-color: #3875d7;"
+        "    gridline-color: #555555;"
+        "    background-color: #1e1e1e;"
+        "    alternate-background-color: #2b2b2b;"
+        "    color: #ffffff;"
+        "    selection-background-color: #0078d4;"
+        "}"
+        "QTableWidget::item {"
+        "    padding: 8px;"
+        "    border: none;"
+        "    color: #ffffff;"
+        "}"
+        "QTableWidget::item:selected {"
+        "    background-color: #0078d4;"
+        "    color: white;"
         "}"
         "QHeaderView::section {"
-        "    background-color: #f5f5f5;"
-        "    padding: 6px;"
-        "    border: 1px solid #e0e0e0;"
+        "    background-color: #2b2b2b;"
+        "    color: #ffffff;"
+        "    padding: 8px;"
+        "    border: 1px solid #555555;"
         "    font-weight: bold;"
+        "}"
+        "QLabel {"
+        "    color: #ffffff;"
         "}"
     );
 }

@@ -33,6 +33,12 @@ public:
     explicit UserManager(ApiManager *apiManager, QWidget *parent = nullptr);
     ~UserManager();
 
+protected:
+    /**
+     * 显示事件，首次显示时自动加载数据
+     */
+    void showEvent(QShowEvent *event) override;
+
 public slots:
     /**
      * 刷新用户列表
@@ -78,6 +84,7 @@ private:
     int m_currentPage;
     int m_pageSize;
     int m_totalUsers;
+    bool m_firstShow;
     
     // 初始化UI
     void setupUI();

@@ -9,6 +9,13 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 为MSVC编译器添加必要的选项
+if(MSVC)
+    add_compile_options(/Zc:__cplusplus)
+    add_compile_options(/permissive-)
+    add_compile_definitions(QT_DISABLE_DEPRECATED_BEFORE=0x060000)
+endif()
+
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Network)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network)
 
@@ -32,6 +39,7 @@ set(PROJECT_SOURCES
         rolemanager.h
         roleeditor.cpp
         roleeditor.h
+        resources.qrc
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

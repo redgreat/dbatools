@@ -54,6 +54,9 @@ public:
     // 设置API基础URL
     void setBaseUrl(const QString &url);
     
+    // 设置认证令牌
+    void setAuthToken(const QString &token);
+    
     // 认证相关
     void login(const QString &username, const QString &password);
     void logout();
@@ -108,11 +111,14 @@ signals:
     // 权限管理信号
     void permissionListResult(bool success, const QList<PermissionInfo> &permissions, const QString &error);
     
-    // 格式化字符串结果信号
+    // 格式化字符串相关信号
     void formatStringResult(bool success, const QString &result, const QString &error);
     
     // 网络错误信号
     void networkError(const QString &error);
+    
+    // Token过期信号
+    void tokenExpired();
 
 private slots:
     // 处理网络请求完成

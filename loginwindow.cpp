@@ -21,7 +21,9 @@ LoginWindow::LoginWindow(QWidget *parent)
     , m_passwordLabel(nullptr)
     , m_statusLabel(nullptr)
     , m_progressBar(nullptr)
+    , m_rememberPasswordCheckBox(nullptr)
     , m_apiManager(new ApiManager(this))
+    , m_settings(new QSettings(this))
 {
     setupUI();
     setupStyles();
@@ -33,9 +35,11 @@ LoginWindow::LoginWindow(QWidget *parent)
             this, &LoginWindow::onNetworkError);
     
     // 从设置中加载服务器URL
-    QSettings settings;
-    QString serverUrl = settings.value("server/url", "http://localhost:8001/api").toString();
+    QString serverUrl = m_settings->value("server/url", "http://localhost:8001/api").toString();
     m_apiManager->setBaseUrl(serverUrl);
+    
+    // 加载保存的登录信息
+    loadSavedCredentials();
 }
 
 /**
@@ -62,6 +66,7 @@ void LoginWindow::setupUI()
     m_passwordLabel = new QLabel("密码:", this);
     m_usernameEdit = new QLineEdit(this);
     m_passwordEdit = new QLineEdit(this);
+    m_rememberPasswordCheckBox = new QCheckBox("记住密码", this);
     m_loginButton = new QPushButton("登录", this);
     m_serverSettingsButton = new QPushButton("服务器设置", this);
     m_statusLabel = new QLabel("", this);
@@ -87,6 +92,7 @@ void LoginWindow::setupUI()
     formLayout->addWidget(m_usernameEdit, 0, 1);
     formLayout->addWidget(m_passwordLabel, 1, 0);
     formLayout->addWidget(m_passwordEdit, 1, 1);
+    formLayout->addWidget(m_rememberPasswordCheckBox, 2, 1);
     
     mainLayout->addLayout(formLayout);
     mainLayout->addSpacing(10);
@@ -124,19 +130,37 @@ void LoginWindow::setupUI()
  */
 void LoginWindow::setupStyles()
 {
+    // 设置整个登录窗口的暗黑主题
+    this->setStyleSheet(
+        "QMainWindow { "
+        "background-color: #2b2b2b; "
+        "color: #ffffff; "
+        "} "
+        "QWidget { "
+        "background-color: #2b2b2b; "
+        "color: #ffffff; "
+        "}"
+    );
+    
     // 设置标题样式
     m_titleLabel->setAlignment(Qt::AlignCenter);
-    m_titleLabel->setStyleSheet("QLabel { font-size: 24px; font-weight: bold; color: #2c3e50; }");
+    m_titleLabel->setStyleSheet("QLabel { font-size: 24px; font-weight: bold; color: #ffffff; }");
+    
+    // 设置标签样式
+    m_usernameLabel->setStyleSheet("QLabel { color: #ffffff; font-size: 14px; }");
+    m_passwordLabel->setStyleSheet("QLabel { color: #ffffff; font-size: 14px; }");
     
     // 设置输入框样式
     QString editStyle = "QLineEdit { "
+                       "background-color: #3c3c3c; "
+                       "color: #ffffff; "
                        "padding: 8px; "
-                       "border: 2px solid #bdc3c7; "
+                       "border: 2px solid #555555; "
                        "border-radius: 4px; "
                        "font-size: 14px; "
                        "} "
                        "QLineEdit:focus { "
-                       "border-color: #3498db; "
+                       "border-color: #4a90e2; "
                        "}";
     
     m_usernameEdit->setStyleSheet(editStyle);
@@ -144,7 +168,7 @@ void LoginWindow::setupStyles()
     
     // 设置按钮样式
     QString buttonStyle = "QPushButton { "
-                         "background-color: #3498db; "
+                         "background-color: #4a90e2; "
                          "color: white; "
                          "border: none; "
                          "padding: 10px 20px; "
@@ -153,19 +177,20 @@ void LoginWindow::setupStyles()
                          "font-weight: bold; "
                          "} "
                          "QPushButton:hover { "
-                         "background-color: #2980b9; "
+                         "background-color: #357abd; "
                          "} "
                          "QPushButton:pressed { "
-                         "background-color: #21618c; "
+                         "background-color: #2968a3; "
                          "} "
                          "QPushButton:disabled { "
-                         "background-color: #bdc3c7; "
+                         "background-color: #555555; "
+                         "color: #888888; "
                          "}";
     
     m_loginButton->setStyleSheet(buttonStyle);
     
     QString settingsButtonStyle = "QPushButton { "
-                                 "background-color: #95a5a6; "
+                                 "background-color: #666666; "
                                  "color: white; "
                                  "border: none; "
                                  "padding: 8px 16px; "
@@ -173,14 +198,53 @@ void LoginWindow::setupStyles()
                                  "font-size: 12px; "
                                  "} "
                                  "QPushButton:hover { "
-                                 "background-color: #7f8c8d; "
+                                 "background-color: #777777; "
                                  "}";
     
     m_serverSettingsButton->setStyleSheet(settingsButtonStyle);
     
+    // 设置复选框样式
+    m_rememberPasswordCheckBox->setStyleSheet(
+        "QCheckBox { "
+        "color: #ffffff; "
+        "font-size: 12px; "
+        "spacing: 5px; "
+        "} "
+        "QCheckBox::indicator { "
+        "width: 16px; "
+        "height: 16px; "
+        "background-color: #3c3c3c; "
+        "border: 2px solid #555555; "
+        "border-radius: 3px; "
+        "} "
+        "QCheckBox::indicator:checked { "
+        "background-color: #4a90e2; "
+        "border-color: #4a90e2; "
+        "image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEwIDNMNC41IDguNUwyIDYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=); "
+        "} "
+        "QCheckBox::indicator:hover { "
+        "border-color: #4a90e2; "
+        "}"
+    );
+    
     // 设置状态标签样式
     m_statusLabel->setAlignment(Qt::AlignCenter);
-    m_statusLabel->setStyleSheet("QLabel { color: #e74c3c; font-size: 12px; }");
+    m_statusLabel->setStyleSheet("QLabel { color: #ff6b6b; font-size: 12px; }");
+    
+    // 设置进度条样式
+    m_progressBar->setStyleSheet(
+        "QProgressBar { "
+        "background-color: #3c3c3c; "
+        "border: 1px solid #555555; "
+        "border-radius: 4px; "
+        "text-align: center; "
+        "color: #ffffff; "
+        "} "
+        "QProgressBar::chunk { "
+        "background-color: #4a90e2; "
+        "border-radius: 3px; "
+        "}"
+    );
 }
 
 /**
@@ -228,10 +292,14 @@ void LoginWindow::onLoginResult(bool success, const QString &message, const QStr
         m_statusLabel->setStyleSheet("QLabel { color: #27ae60; font-size: 12px; }");
         
         // 保存认证令牌
-        QSettings settings;
-        settings.setValue("auth/token", token);
-        settings.setValue("auth/username", m_usernameEdit->text());
+        m_settings->setValue("auth/token", token);
+        m_settings->setValue("auth/username", m_usernameEdit->text());
         qDebug() << "[DEBUG] Auth token and username saved";
+        
+        // 如果选择了记住密码，则保存凭据
+        if (m_rememberPasswordCheckBox->isChecked()) {
+            saveCredentials();
+        }
         
         // 延迟一下再打开主窗口
         QTimer::singleShot(500, this, [this]() {
@@ -317,4 +385,33 @@ void LoginWindow::setLoginState(bool isLogging)
         m_statusLabel->setText("正在登录...");
         m_statusLabel->setStyleSheet("QLabel { color: #3498db; font-size: 12px; }");
     }
+}
+
+/**
+ * 加载保存的登录信息
+ */
+void LoginWindow::loadSavedCredentials()
+{
+    QString savedUsername = m_settings->value("login/username", "").toString();
+    QString savedPassword = m_settings->value("login/password", "").toString();
+    bool rememberPassword = m_settings->value("login/remember", false).toBool();
+    
+    if (!savedUsername.isEmpty()) {
+        m_usernameEdit->setText(savedUsername);
+    }
+    
+    if (rememberPassword && !savedPassword.isEmpty()) {
+        m_passwordEdit->setText(savedPassword);
+        m_rememberPasswordCheckBox->setChecked(true);
+    }
+}
+
+/**
+ * 保存登录信息
+ */
+void LoginWindow::saveCredentials()
+{
+    m_settings->setValue("login/username", m_usernameEdit->text());
+    m_settings->setValue("login/password", m_passwordEdit->text());
+    m_settings->setValue("login/remember", m_rememberPasswordCheckBox->isChecked());
 }

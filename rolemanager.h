@@ -20,6 +20,12 @@ public:
     explicit RoleManager(ApiManager *apiManager, QWidget *parent = nullptr);
     ~RoleManager();
 
+protected:
+    /**
+     * 显示事件，首次显示时自动加载数据
+     */
+    void showEvent(QShowEvent *event) override;
+
 public slots:
     /**
      * 刷新角色列表
@@ -149,6 +155,7 @@ private:
     ApiManager *m_apiManager;
     QList<RoleInfo> m_roles;
     int m_totalRoles;
+    bool m_firstShow;
 };
 
 #endif // ROLEMANAGER_H

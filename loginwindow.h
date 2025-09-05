@@ -10,6 +10,8 @@
 #include <QGridLayout>
 #include <QMessageBox>
 #include <QProgressBar>
+#include <QCheckBox>
+#include <QSettings>
 #include "apimanager.h"
 
 QT_BEGIN_NAMESPACE
@@ -52,9 +54,13 @@ private:
     QLabel *m_passwordLabel;
     QLabel *m_statusLabel;
     QProgressBar *m_progressBar;
+    QCheckBox *m_rememberPasswordCheckBox;
     
     // API管理器
     ApiManager *m_apiManager;
+    
+    // 设置对象
+    QSettings *m_settings;
     
     // 初始化UI
     void setupUI();
@@ -67,6 +73,12 @@ private:
     
     // 设置登录状态
     void setLoginState(bool isLogging);
+    
+    // 加载保存的登录信息
+    void loadSavedCredentials();
+    
+    // 保存登录信息
+    void saveCredentials();
 };
 
 #endif // LOGINWINDOW_H

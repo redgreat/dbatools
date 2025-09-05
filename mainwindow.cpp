@@ -9,6 +9,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <QShowEvent>
 
 /**
  * 主窗口构造函数
@@ -41,11 +42,25 @@ MainWindow::MainWindow(QWidget *parent)
     QString serverUrl = settings.value("server/url", "http://localhost:8001/api").toString();
     m_apiManager->setBaseUrl(serverUrl);
     
+    // 恢复认证令牌
+    QString savedToken = settings.value("auth/token").toString();
+    if (!savedToken.isEmpty()) {
+        m_apiManager->setAuthToken(savedToken);
+    } else {
+        qDebug() << "[DEBUG] MainWindow: No saved token found";
+    }
+    
     // 连接API管理器信号
     connect(m_apiManager, &ApiManager::loginResult,
             this, &MainWindow::onLoginResult);
     connect(m_apiManager, &ApiManager::logoutResult,
             this, &MainWindow::onLogoutResult);
+    connect(m_apiManager, &ApiManager::tokenExpired,
+            this, &MainWindow::onTokenExpired);
+    
+    // 连接标签页切换信号
+    connect(m_tabWidget, &QTabWidget::currentChanged,
+            this, &MainWindow::onTabChanged);
     
     // 显示欢迎信息
     QString username = settings.value("auth/username", "用户").toString();
@@ -166,26 +181,133 @@ void MainWindow::initializeTools()
  */
 void MainWindow::setupStyles()
 {
-    // 设置标签页样式
-    m_tabWidget->setStyleSheet(
+    // 设置暗黑主题样式
+    QString darkTheme = 
+        "QMainWindow { "
+        "background-color: #2b2b2b; "
+        "color: #ffffff; "
+        "} "
         "QTabWidget::pane { "
-        "border: 1px solid #c0c0c0; "
-        "background-color: white; "
+        "border: 1px solid #555555; "
+        "background-color: #2b2b2b; "
         "} "
         "QTabBar::tab { "
-        "background-color: #f0f0f0; "
-        "border: 1px solid #c0c0c0; "
+        "background-color: #3c3c3c; "
+        "color: #ffffff; "
+        "border: 1px solid #555555; "
         "padding: 8px 16px; "
         "margin-right: 2px; "
         "} "
         "QTabBar::tab:selected { "
-        "background-color: white; "
-        "border-bottom-color: white; "
+        "background-color: #2b2b2b; "
+        "border-bottom-color: #2b2b2b; "
         "} "
         "QTabBar::tab:hover { "
-        "background-color: #e0e0e0; "
-        "}"
-    );
+        "background-color: #404040; "
+        "} "
+        "QWidget { "
+        "background-color: #2b2b2b; "
+        "color: #ffffff; "
+        "} "
+        "QTextEdit, QLineEdit, QPlainTextEdit { "
+        "background-color: #3c3c3c; "
+        "color: #ffffff; "
+        "border: 1px solid #555555; "
+        "padding: 4px; "
+        "} "
+        "QPushButton { "
+        "background-color: #404040; "
+        "color: #ffffff; "
+        "border: 1px solid #555555; "
+        "padding: 6px 12px; "
+        "border-radius: 3px; "
+        "} "
+        "QPushButton:hover { "
+        "background-color: #4a4a4a; "
+        "} "
+        "QPushButton:pressed { "
+        "background-color: #353535; "
+        "} "
+        "QTableWidget { "
+        "background-color: #2b2b2b; "
+        "color: #ffffff; "
+        "gridline-color: #555555; "
+        "selection-background-color: #404040; "
+        "} "
+        "QTableWidget::item { "
+        "background-color: #2b2b2b; "
+        "color: #ffffff; "
+        "border: none; "
+        "padding: 4px; "
+        "} "
+        "QTableWidget::item:selected { "
+        "background-color: #404040; "
+        "} "
+        "QHeaderView::section { "
+        "background-color: #3c3c3c; "
+        "color: #ffffff; "
+        "border: 1px solid #555555; "
+        "padding: 4px; "
+        "} "
+        "QMenuBar { "
+        "background-color: #2b2b2b; "
+        "color: #ffffff; "
+        "} "
+        "QMenuBar::item { "
+        "background-color: transparent; "
+        "padding: 4px 8px; "
+        "} "
+        "QMenuBar::item:selected { "
+        "background-color: #404040; "
+        "} "
+        "QMenu { "
+        "background-color: #2b2b2b; "
+        "color: #ffffff; "
+        "border: 1px solid #555555; "
+        "} "
+        "QMenu::item { "
+        "padding: 4px 16px; "
+        "} "
+        "QMenu::item:selected { "
+        "background-color: #404040; "
+        "} "
+        "QStatusBar { "
+        "background-color: #2b2b2b; "
+        "color: #ffffff; "
+        "border-top: 1px solid #555555; "
+        "} "
+        "QLabel { "
+        "color: #ffffff; "
+        "} "
+        "QComboBox { "
+        "background-color: #3c3c3c; "
+        "color: #ffffff; "
+        "border: 1px solid #555555; "
+        "padding: 4px; "
+        "} "
+        "QComboBox::drop-down { "
+        "border: none; "
+        "} "
+        "QComboBox::down-arrow { "
+        "image: none; "
+        "border-left: 5px solid transparent; "
+        "border-right: 5px solid transparent; "
+        "border-top: 5px solid #ffffff; "
+        "} "
+        "QScrollBar:vertical { "
+        "background-color: #3c3c3c; "
+        "width: 12px; "
+        "} "
+        "QScrollBar::handle:vertical { "
+        "background-color: #555555; "
+        "border-radius: 6px; "
+        "} "
+        "QScrollBar::handle:vertical:hover { "
+        "background-color: #666666; "
+        "}";
+    
+    // 应用暗黑主题到整个应用程序
+    this->setStyleSheet(darkTheme);
 }
 
 /**
@@ -258,14 +380,32 @@ void MainWindow::onLogoutResult(bool success, const QString &message)
 void MainWindow::onLoginResult(bool success, const QString &message, const QString &token)
 {
     if (success) {
-        // 登录成功后刷新用户列表和角色列表
-        if (m_userManager) {
-            m_userManager->refreshUserList();
-        }
-        if (m_roleManager) {
-            m_roleManager->refreshRoleList();
-        }
+        // 登录成功，数据将在首次切换到对应标签页时自动加载
+        // 不在这里直接加载，避免与showEvent冲突
     }
+}
+
+/**
+ * 处理Token过期事件
+ */
+void MainWindow::onTokenExpired()
+{
+    qDebug() << "[DEBUG] Token expired, redirecting to login page";
+    
+    // 清除认证信息
+    QSettings settings;
+    settings.remove("auth/token");
+    settings.remove("auth/username");
+    
+    // 显示提示信息
+    QMessageBox::information(this, "会话过期", "您的登录会话已过期，请重新登录。");
+    
+    // 显示登录窗口
+    LoginWindow *loginWindow = new LoginWindow();
+    loginWindow->show();
+    
+    // 关闭主窗口
+    this->close();
 }
 
 /**
@@ -324,5 +464,26 @@ void MainWindow::onRoleManagementClicked()
             m_tabWidget->setCurrentIndex(i);
             break;
         }
+    }
+}
+
+/**
+ * 标签页切换事件
+ */
+void MainWindow::onTabChanged(int index)
+{
+    QWidget *currentWidget = m_tabWidget->widget(index);
+    
+    // 检查是否切换到用户管理页面
+    if (currentWidget == m_userManager && m_userManager) {
+        // 触发用户管理页面的显示事件
+        QShowEvent showEvent;
+        QApplication::sendEvent(m_userManager, &showEvent);
+    }
+    // 检查是否切换到角色管理页面
+    else if (currentWidget == m_roleManager && m_roleManager) {
+        // 触发角色管理页面的显示事件
+        QShowEvent showEvent;
+        QApplication::sendEvent(m_roleManager, &showEvent);
     }
 }
