@@ -10,6 +10,8 @@
 #include <QHBoxLayout>
 #include <QPushButton>
 #include <QShowEvent>
+#include <QDebug>
+#include <iostream>
 
 /**
  * 主窗口构造函数
@@ -17,13 +19,14 @@
  */
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , m_tabWidget(nullptr)
+    , m_currentTool(nullptr)
     , m_statusLabel(nullptr)
     , m_exitAction(nullptr)
     , m_aboutAction(nullptr)
     , m_logoutAction(nullptr)
     , m_settingsAction(nullptr)
     , m_addToolAction(nullptr)
+    , m_stringFormatterAction(nullptr)
     , m_userManagementAction(nullptr)
     , m_roleManagementAction(nullptr)
     , m_stringFormatter(nullptr)
@@ -31,11 +34,15 @@ MainWindow::MainWindow(QWidget *parent)
     , m_roleManager(nullptr)
     , m_apiManager(new ApiManager(this))
 {
+    qDebug() << "[DEBUG] MainWindow constructor called, instance:" << this;
     setupUI();
     createMenus();
     createStatusBar();
     initializeTools();
     setupStyles();
+    
+    // 默认显示字符串格式化工具
+    showTool(m_stringFormatter);
     
     // 从设置中加载服务器URL和认证令牌
     QSettings settings;
@@ -58,10 +65,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_apiManager, &ApiManager::tokenExpired,
             this, &MainWindow::onTokenExpired);
     
-    // 连接标签页切换信号
-    connect(m_tabWidget, &QTabWidget::currentChanged,
-            this, &MainWindow::onTabChanged);
-    
     // 显示欢迎信息
     QString username = settings.value("auth/username", "用户").toString();
     m_statusLabel->setText(QString("欢迎, %1!").arg(username));
@@ -72,6 +75,12 @@ MainWindow::MainWindow(QWidget *parent)
  */
 MainWindow::~MainWindow()
 {
+    qDebug() << "[DEBUG] MainWindow destructor called, instance:" << this;
+    // 清理静态引用
+    if (LoginWindow::s_mainWindow == this) {
+        qDebug() << "[DEBUG] Clearing s_mainWindow static reference";
+        LoginWindow::s_mainWindow = nullptr;
+    }
 }
 
 /**
@@ -82,14 +91,8 @@ void MainWindow::setupUI()
     setWindowTitle("DBA Tools - 工具集合");
     resize(800, 600);
     
-    // 创建中央标签页组件
-    m_tabWidget = new QTabWidget(this);
-    setCentralWidget(m_tabWidget);
-    
-    // 设置标签页位置
-    m_tabWidget->setTabPosition(QTabWidget::North);
-    m_tabWidget->setTabsClosable(false);
-    m_tabWidget->setMovable(true);
+    // 中央widget将在showTool方法中设置
+    m_currentTool = nullptr;
 }
 
 /**
@@ -97,27 +100,49 @@ void MainWindow::setupUI()
  */
 void MainWindow::createMenus()
 {
+    static bool menusCreated = false;
+    if (menusCreated) {
+        qDebug() << "[DEBUG] 菜单已存在，跳过创建";
+        return;
+    }
+    
+    std::cout << "[DEBUG] 开始创建菜单" << std::endl;
     // 文件菜单
     QMenu *fileMenu = menuBar()->addMenu("文件(&F)");
+    std::cout << "[DEBUG] 文件菜单创建完成" << std::endl;
     
     m_settingsAction = new QAction("设置(&S)", this);
     m_settingsAction->setShortcut(QKeySequence::Preferences);
     connect(m_settingsAction, &QAction::triggered, this, &MainWindow::onSettingsClicked);
     fileMenu->addAction(m_settingsAction);
+    qDebug() << "设置Action添加完成:" << m_settingsAction;
     
     fileMenu->addSeparator();
     
     m_logoutAction = new QAction("注销(&L)", this);
     connect(m_logoutAction, &QAction::triggered, this, &MainWindow::onLogoutClicked);
     fileMenu->addAction(m_logoutAction);
+    qDebug() << "注销Action添加完成:" << m_logoutAction;
     
     m_exitAction = new QAction("退出(&X)", this);
     m_exitAction->setShortcut(QKeySequence::Quit);
     connect(m_exitAction, &QAction::triggered, this, &MainWindow::onExitClicked);
     fileMenu->addAction(m_exitAction);
+    qDebug() << "退出Action添加完成:" << m_exitAction;
+    
+    menusCreated = true;
     
     // 工具菜单
     QMenu *toolsMenu = menuBar()->addMenu("工具(&T)");
+    qDebug() << "工具菜单创建完成:" << toolsMenu;
+    qDebug() << "菜单栏:" << menuBar() << "是否可见:" << menuBar()->isVisible();
+    
+    m_stringFormatterAction = new QAction("字符串格式化(&S)", this);
+    m_stringFormatterAction->setEnabled(true);
+    connect(m_stringFormatterAction, &QAction::triggered, this, &MainWindow::onStringFormatterClicked);
+    toolsMenu->addAction(m_stringFormatterAction);
+    
+    toolsMenu->addSeparator();
     
     m_addToolAction = new QAction("添加工具(&A)", this);
     connect(m_addToolAction, &QAction::triggered, this, &MainWindow::onAddToolClicked);
@@ -127,10 +152,12 @@ void MainWindow::createMenus()
     QMenu *managementMenu = menuBar()->addMenu("管理(&M)");
     
     m_userManagementAction = new QAction("用户管理(&U)", this);
+    m_userManagementAction->setEnabled(true);
     connect(m_userManagementAction, &QAction::triggered, this, &MainWindow::onUserManagementClicked);
     managementMenu->addAction(m_userManagementAction);
     
     m_roleManagementAction = new QAction("角色管理(&R)", this);
+    m_roleManagementAction->setEnabled(true);
     connect(m_roleManagementAction, &QAction::triggered, this, &MainWindow::onRoleManagementClicked);
     managementMenu->addAction(m_roleManagementAction);
     
@@ -140,6 +167,15 @@ void MainWindow::createMenus()
     m_aboutAction = new QAction("关于(&A)", this);
     connect(m_aboutAction, &QAction::triggered, this, &MainWindow::onAboutClicked);
     helpMenu->addAction(m_aboutAction);
+    
+    // 调试信息：检查菜单和Action状态
+    qDebug() << "=== 菜单创建完成，状态检查 ===";
+    qDebug() << "文件菜单:" << fileMenu << "是否启用:" << fileMenu->isEnabled() << "是否可见:" << fileMenu->isVisible();
+    qDebug() << "设置Action:" << m_settingsAction << "是否启用:" << m_settingsAction->isEnabled();
+    qDebug() << "注销Action:" << m_logoutAction << "是否启用:" << m_logoutAction->isEnabled();
+    qDebug() << "退出Action:" << m_exitAction << "是否启用:" << m_exitAction->isEnabled();
+    qDebug() << "菜单栏:" << menuBar() << "是否启用:" << menuBar()->isEnabled() << "是否可见:" << menuBar()->isVisible();
+    qDebug() << "================================";
 }
 
 /**
@@ -162,18 +198,14 @@ void MainWindow::initializeTools()
 {
     // 创建字符串格式化工具
     m_stringFormatter = new StringFormatter(this);
-    m_tabWidget->addTab(m_stringFormatter, "字符串格式化");
     
     // 创建用户管理工具
     m_userManager = new UserManager(m_apiManager, this);
-    m_tabWidget->addTab(m_userManager, "用户管理");
     
     // 创建角色管理工具
     m_roleManager = new RoleManager(m_apiManager, this);
-    m_tabWidget->addTab(m_roleManager, "角色管理");
     
     // 可以在这里添加更多工具
-    // 例如: m_tabWidget->addTab(new OtherTool(), "其他工具");
 }
 
 /**
@@ -186,24 +218,6 @@ void MainWindow::setupStyles()
         "QMainWindow { "
         "background-color: #2b2b2b; "
         "color: #ffffff; "
-        "} "
-        "QTabWidget::pane { "
-        "border: 1px solid #555555; "
-        "background-color: #2b2b2b; "
-        "} "
-        "QTabBar::tab { "
-        "background-color: #3c3c3c; "
-        "color: #ffffff; "
-        "border: 1px solid #555555; "
-        "padding: 8px 16px; "
-        "margin-right: 2px; "
-        "} "
-        "QTabBar::tab:selected { "
-        "background-color: #2b2b2b; "
-        "border-bottom-color: #2b2b2b; "
-        "} "
-        "QTabBar::tab:hover { "
-        "background-color: #404040; "
         "} "
         "QWidget { "
         "background-color: #2b2b2b; "
@@ -252,13 +266,26 @@ void MainWindow::setupStyles()
         "QMenuBar { "
         "background-color: #2b2b2b; "
         "color: #ffffff; "
+        "border-bottom: 1px solid #555555; "
+        "spacing: 0px; "
         "} "
         "QMenuBar::item { "
         "background-color: transparent; "
-        "padding: 4px 8px; "
+        "padding: 8px 16px; "
+        "margin: 1px; "
+        "border: none; "
+        "} "
+        "QMenuBar::item:hover { "
+        "background-color: #4a90e2; "
+        "color: #ffffff; "
         "} "
         "QMenuBar::item:selected { "
-        "background-color: #404040; "
+        "background-color: #357abd; "
+        "color: #ffffff; "
+        "} "
+        "QMenuBar::item:pressed { "
+        "background-color: #2968a3; "
+        "color: #ffffff; "
         "} "
         "QMenu { "
         "background-color: #2b2b2b; "
@@ -266,10 +293,18 @@ void MainWindow::setupStyles()
         "border: 1px solid #555555; "
         "} "
         "QMenu::item { "
-        "padding: 4px 16px; "
+        "padding: 8px 20px; "
         "} "
         "QMenu::item:selected { "
         "background-color: #404040; "
+        "} "
+        "QMenu::item:pressed { "
+        "background-color: #353535; "
+        "} "
+        "QMenu::separator { "
+        "height: 1px; "
+        "background-color: #555555; "
+        "margin: 4px 0px; "
         "} "
         "QStatusBar { "
         "background-color: #2b2b2b; "
@@ -327,6 +362,7 @@ void MainWindow::onAboutClicked()
  */
 void MainWindow::onExitClicked()
 {
+    qDebug() << "退出菜单被点击";
     QApplication::quit();
 }
 
@@ -335,6 +371,7 @@ void MainWindow::onExitClicked()
  */
 void MainWindow::onLogoutClicked()
 {
+    qDebug() << "注销菜单被点击";
     int ret = QMessageBox::question(this, "确认注销",
                                    "确定要注销当前用户吗?",
                                    QMessageBox::Yes | QMessageBox::No,
@@ -413,6 +450,7 @@ void MainWindow::onTokenExpired()
  */
 void MainWindow::onSettingsClicked()
 {
+    qDebug() << "设置菜单被点击";
     QSettings settings;
     QString currentUrl = settings.value("server/url", "http://localhost:8001/api").toString();
     
@@ -444,13 +482,8 @@ void MainWindow::onAddToolClicked()
  */
 void MainWindow::onUserManagementClicked()
 {
-    // 切换到用户管理标签页
-    for (int i = 0; i < m_tabWidget->count(); ++i) {
-        if (m_tabWidget->widget(i) == m_userManager) {
-            m_tabWidget->setCurrentIndex(i);
-            break;
-        }
-    }
+    qDebug() << "用户管理菜单被点击";
+    showTool(m_userManager);
 }
 
 /**
@@ -458,32 +491,41 @@ void MainWindow::onUserManagementClicked()
  */
 void MainWindow::onRoleManagementClicked()
 {
-    // 切换到角色管理标签页
-    for (int i = 0; i < m_tabWidget->count(); ++i) {
-        if (m_tabWidget->widget(i) == m_roleManager) {
-            m_tabWidget->setCurrentIndex(i);
-            break;
-        }
-    }
+    qDebug() << "角色管理菜单被点击";
+    showTool(m_roleManager);
 }
 
 /**
- * 标签页切换事件
+ * 字符串格式化菜单点击事件
  */
-void MainWindow::onTabChanged(int index)
+void MainWindow::onStringFormatterClicked()
 {
-    QWidget *currentWidget = m_tabWidget->widget(index);
-    
-    // 检查是否切换到用户管理页面
-    if (currentWidget == m_userManager && m_userManager) {
-        // 触发用户管理页面的显示事件
-        QShowEvent showEvent;
-        QApplication::sendEvent(m_userManager, &showEvent);
+    qDebug() << "字符串格式化菜单被点击";
+    showTool(m_stringFormatter);
+}
+
+/**
+ * 显示指定工具页面
+ */
+void MainWindow::showTool(QWidget* tool)
+{
+    if (m_currentTool == tool) {
+        return; // 已经是当前工具，无需切换
     }
-    // 检查是否切换到角色管理页面
-    else if (currentWidget == m_roleManager && m_roleManager) {
-        // 触发角色管理页面的显示事件
+    
+    // 隐藏当前工具
+    if (m_currentTool) {
+        m_currentTool->hide();
+    }
+    
+    // 设置新的当前工具
+    m_currentTool = tool;
+    setCentralWidget(m_currentTool);
+    
+    // 触发显示事件
+    if (m_currentTool) {
         QShowEvent showEvent;
-        QApplication::sendEvent(m_roleManager, &showEvent);
+        QApplication::sendEvent(m_currentTool, &showEvent);
+        m_currentTool->show();
     }
 }

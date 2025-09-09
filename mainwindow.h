@@ -44,12 +44,13 @@ private slots:
     void onUserManagementClicked();
     void onRoleManagementClicked();
     
-    // 标签页切换
-    void onTabChanged(int index);
+    // 工具切换
+    void onStringFormatterClicked();
+    void showTool(QWidget* tool);
 
 private:
     // UI组件
-    QTabWidget *m_tabWidget;
+    QWidget *m_currentTool;
     QLabel *m_statusLabel;
     
     // 菜单和动作
@@ -58,6 +59,7 @@ private:
     QAction *m_logoutAction;
     QAction *m_settingsAction;
     QAction *m_addToolAction;
+    QAction *m_stringFormatterAction;
     QAction *m_userManagementAction;
     QAction *m_roleManagementAction;
     

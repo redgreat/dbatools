@@ -5,6 +5,9 @@
 #include <QSettings>
 #include <QTimer>
 
+// 静态成员变量初始化
+MainWindow *LoginWindow::s_mainWindow = nullptr;
+
 /**
  * 登录窗口构造函数
  * 初始化UI组件和API管理器
@@ -304,8 +307,19 @@ void LoginWindow::onLoginResult(bool success, const QString &message, const QStr
         // 延迟一下再打开主窗口
         QTimer::singleShot(500, this, [this]() {
             qDebug() << "[DEBUG] About to open main window and close login window";
-            MainWindow *mainWindow = new MainWindow();
-            mainWindow->show();
+            
+            // 检查是否已存在MainWindow实例
+            qDebug() << "[DEBUG] Current s_mainWindow value:" << s_mainWindow;
+            if (s_mainWindow == nullptr) {
+                s_mainWindow = new MainWindow();
+                qDebug() << "[DEBUG] Created new MainWindow instance:" << s_mainWindow;
+            } else {
+                qDebug() << "[DEBUG] MainWindow already exists, reusing instance:" << s_mainWindow;
+            }
+            
+            s_mainWindow->show();
+            s_mainWindow->raise();
+            s_mainWindow->activateWindow();
             this->close();
         });
     } else {

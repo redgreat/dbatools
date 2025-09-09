@@ -28,6 +28,9 @@ class LoginWindow : public QMainWindow
 public:
     LoginWindow(QWidget *parent = nullptr);
     ~LoginWindow();
+    
+    // 静态MainWindow实例指针
+    static class MainWindow *s_mainWindow;
 
 private slots:
     // 登录按钮点击事件

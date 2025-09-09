@@ -14,8 +14,8 @@ $qtBinPath = "e:\Qt\6.9.2\llvm-mingw_64\bin"
 $env:PATH = "$qtBinPath;" + $env:PATH
 $env:QT_PLUGIN_PATH = "e:\Qt\6.9.2\llvm-mingw_64\plugins"
 
-# 启用Qt调试输出
-$env:QT_LOGGING_RULES = "*.debug=true"
+# 启用Qt调试输出，过滤掉不必要的信息
+$env:QT_LOGGING_RULES = "*.debug=false;*.info=false;*.warning=true;*.critical=true;qt.widgets.painting=false;qt.qpa.window=false;qt.accessibility.cache=false;qt.pointer.velocity=false;qt.text.drawing=false;qt.widgets.gestures=false;qt.qpa.events=false;dbatools.debug=true"
 $env:QT_DEBUG_PLUGINS = "1"
 
 # 显示环境信息
