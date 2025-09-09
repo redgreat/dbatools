@@ -2,6 +2,8 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QMessageBox>
+#include <QDateTime>
+#include <QDebug>
 #include <QTextCursor>
 #include <QScrollBar>
 
@@ -9,31 +11,22 @@
  * 字符串格式化工具构造函数
  * 初始化UI组件和API连接
  */
-StringFormatter::StringFormatter(ApiManager *apiManager, QWidget *parent)
+StringFormatter::StringFormatter(QWidget *parent)
     : QWidget(parent)
     , m_inputTextEdit(nullptr)
     , m_outputTextEdit(nullptr)
-    , m_formatTypeCombo(nullptr)
-    , m_formatButton(nullptr)
+    , m_whereFormatButton(nullptr)
+    , m_valuesFormatButton(nullptr)
     , m_clearButton(nullptr)
     , m_copyResultButton(nullptr)
     , m_statusLabel(nullptr)
-    , m_progressBar(nullptr)
     , m_splitter(nullptr)
     , m_inputGroup(nullptr)
     , m_outputGroup(nullptr)
-    , m_controlGroup(nullptr)
-    , m_apiManager(apiManager)
+    , m_controlWidget(nullptr)
 {
     setupUI();
     setupStyles();
-    initializeFormatTypes();
-    
-    // 连接API管理器信号
-    connect(m_apiManager, &ApiManager::formatStringResult,
-            this, &StringFormatter::onFormatResult);
-    connect(m_apiManager, &ApiManager::networkError,
-            this, &StringFormatter::onNetworkError);
 }
 
 /**
@@ -41,39 +34,35 @@ StringFormatter::StringFormatter(ApiManager *apiManager, QWidget *parent)
  */
 void StringFormatter::setupUI()
 {
+    setWindowTitle("查询条件格式化工具");
+    resize(1000, 700);
+    
     // 创建主布局
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(0, 0, 0, 10);
+    mainLayout->setSpacing(5);
     
-    // 创建控制面板组
-    m_controlGroup = new QGroupBox("格式化控制", this);
-    QHBoxLayout *controlLayout = new QHBoxLayout(m_controlGroup);
-    
-    // 格式化类型选择
-    QLabel *typeLabel = new QLabel("格式化类型:", this);
-    m_formatTypeCombo = new QComboBox(this);
-    m_formatTypeCombo->setMinimumWidth(150);
+    // 创建控制面板
+    m_controlWidget = new QWidget(this);
+    QHBoxLayout *controlLayout = new QHBoxLayout(m_controlWidget);
+    controlLayout->setContentsMargins(5, 5, 5, 5);
+    m_controlWidget->setMaximumHeight(50);
     
     // 按钮
-    m_formatButton = new QPushButton("格式化", this);
+    m_whereFormatButton = new QPushButton("WHERE条件格式化", this);
+    m_valuesFormatButton = new QPushButton("VALUES插入格式化", this);
     m_clearButton = new QPushButton("清空", this);
     m_copyResultButton = new QPushButton("复制结果", this);
     
-    // 进度条
-    m_progressBar = new QProgressBar(this);
-    m_progressBar->setRange(0, 0);
-    m_progressBar->setVisible(false);
-    m_progressBar->setMaximumHeight(20);
+    // 状态标签
+    m_statusLabel = new QLabel("就绪", this);
     
-    controlLayout->addWidget(typeLabel);
-    controlLayout->addWidget(m_formatTypeCombo);
-    controlLayout->addSpacing(20);
-    controlLayout->addWidget(m_formatButton);
+    controlLayout->addWidget(m_whereFormatButton);
+    controlLayout->addWidget(m_valuesFormatButton);
+    controlLayout->addStretch();
     controlLayout->addWidget(m_clearButton);
     controlLayout->addWidget(m_copyResultButton);
-    controlLayout->addStretch();
-    controlLayout->addWidget(m_progressBar);
-    
-    mainLayout->addWidget(m_controlGroup);
+    controlLayout->addWidget(m_statusLabel);
     
     // 创建分割器
     m_splitter = new QSplitter(Qt::Horizontal, this);
@@ -82,7 +71,7 @@ void StringFormatter::setupUI()
     m_inputGroup = new QGroupBox("输入文本", this);
     QVBoxLayout *inputLayout = new QVBoxLayout(m_inputGroup);
     m_inputTextEdit = new QTextEdit(this);
-    m_inputTextEdit->setPlaceholderText("请输入需要格式化的文本...");
+    m_inputTextEdit->setPlaceholderText("请输入需要格式化的字符串数据，每行一个...");
     inputLayout->addWidget(m_inputTextEdit);
     
     // 输出区域
@@ -96,23 +85,19 @@ void StringFormatter::setupUI()
     // 添加到分割器
     m_splitter->addWidget(m_inputGroup);
     m_splitter->addWidget(m_outputGroup);
-    m_splitter->setSizes({400, 400});
+    m_splitter->setSizes({500, 500});
     
+    // 添加到主布局
+    mainLayout->addWidget(m_controlWidget);
     mainLayout->addWidget(m_splitter);
     
-    // 状态标签
-    m_statusLabel = new QLabel("就绪", this);
-    mainLayout->addWidget(m_statusLabel);
-    
     // 连接信号槽
-    connect(m_formatButton, &QPushButton::clicked,
-            this, &StringFormatter::onFormatClicked);
+    connect(m_whereFormatButton, &QPushButton::clicked, this, &StringFormatter::onWhereFormatClicked);
+    connect(m_valuesFormatButton, &QPushButton::clicked, this, &StringFormatter::onValuesFormatClicked);
     connect(m_clearButton, &QPushButton::clicked,
             this, &StringFormatter::onClearClicked);
     connect(m_copyResultButton, &QPushButton::clicked,
             this, &StringFormatter::onCopyResultClicked);
-    connect(m_formatTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &StringFormatter::onFormatTypeChanged);
 }
 
 /**
@@ -137,7 +122,7 @@ void StringFormatter::setupStyles()
                            "color: #ffffff; "
                            "}";
     
-    m_controlGroup->setStyleSheet(groupBoxStyle);
+    // 控制面板不需要特殊样式，使用默认样式
     m_inputGroup->setStyleSheet(groupBoxStyle);
     m_outputGroup->setStyleSheet(groupBoxStyle);
     
@@ -205,7 +190,8 @@ void StringFormatter::setupStyles()
                                   "border-color: #666666; "
                                   "}";
     
-    m_formatButton->setStyleSheet(primaryButtonStyle);
+    m_whereFormatButton->setStyleSheet(primaryButtonStyle);
+    m_valuesFormatButton->setStyleSheet(primaryButtonStyle);
     m_clearButton->setStyleSheet(secondaryButtonStyle);
     m_copyResultButton->setStyleSheet(secondaryButtonStyle);
     
@@ -238,7 +224,7 @@ void StringFormatter::setupStyles()
                            "selection-color: #ffffff; "
                            "}";
     
-    m_formatTypeCombo->setStyleSheet(comboBoxStyle);
+
     
     // 设置状态标签样式 - 暗黑主题
     m_statusLabel->setStyleSheet("QLabel { "
@@ -249,43 +235,50 @@ void StringFormatter::setupStyles()
                                 "}");
 }
 
-/**
- * 初始化格式化类型
- */
-void StringFormatter::initializeFormatTypes()
-{
-    m_formatTypeCombo->addItem("JSON格式化", "json");
-    m_formatTypeCombo->addItem("XML格式化", "xml");
-    m_formatTypeCombo->addItem("SQL格式化", "sql");
-    m_formatTypeCombo->addItem("HTML格式化", "html");
-    m_formatTypeCombo->addItem("CSS格式化", "css");
-    m_formatTypeCombo->addItem("JavaScript格式化", "javascript");
-    m_formatTypeCombo->addItem("Base64编码", "base64_encode");
-    m_formatTypeCombo->addItem("Base64解码", "base64_decode");
-    m_formatTypeCombo->addItem("URL编码", "url_encode");
-    m_formatTypeCombo->addItem("URL解码", "url_decode");
-    
-    // 设置默认选择
-    m_formatTypeCombo->setCurrentIndex(0);
-    onFormatTypeChanged();
-}
+
 
 /**
- * 格式化按钮点击事件处理
+ * WHERE条件格式化按钮点击事件
  */
-void StringFormatter::onFormatClicked()
+void StringFormatter::onWhereFormatClicked()
 {
     if (!validateInput()) {
         return;
     }
     
-    setProcessingState(true);
+    QString inputText = m_inputTextEdit->toPlainText().trimmed();
+    QStringList values = parseInputText(inputText);
     
-    QString input = m_inputTextEdit->toPlainText();
-    QString formatType = m_formatTypeCombo->currentData().toString();
+    if (values.isEmpty()) {
+        updateStatus("输入为空或格式不正确", "#e74c3c");
+        return;
+    }
     
-    updateStatus("正在格式化...", "#3498db");
-    m_apiManager->formatString(input, formatType);
+    QString result = formatAsWhereCondition(values);
+    m_outputTextEdit->setPlainText(result);
+    updateStatus(QString("WHERE条件格式化完成，共处理 %1 个值").arg(values.size()), "#27ae60");
+}
+
+/**
+ * VALUES插入格式化按钮点击事件
+ */
+void StringFormatter::onValuesFormatClicked()
+{
+    if (!validateInput()) {
+        return;
+    }
+    
+    QString inputText = m_inputTextEdit->toPlainText().trimmed();
+    QStringList values = parseInputText(inputText);
+    
+    if (values.isEmpty()) {
+        updateStatus("输入为空或格式不正确", "#e74c3c");
+        return;
+    }
+    
+    QString result = formatAsValuesInsert(values);
+    m_outputTextEdit->setPlainText(result);
+    updateStatus(QString("VALUES插入格式化完成，共处理 %1 个值").arg(values.size()), "#27ae60");
 }
 
 /**
@@ -315,66 +308,9 @@ void StringFormatter::onCopyResultClicked()
     updateStatus("结果已复制到剪贴板", "#27ae60");
 }
 
-/**
- * 格式化类型改变事件处理
- */
-void StringFormatter::onFormatTypeChanged()
-{
-    QString formatType = m_formatTypeCombo->currentData().toString();
-    QString placeholder;
-    
-    if (formatType == "json") {
-        placeholder = "请输入JSON字符串，例如: {\"name\":\"value\"}";
-    } else if (formatType == "xml") {
-        placeholder = "请输入XML字符串，例如: <root><item>value</item></root>";
-    } else if (formatType == "sql") {
-        placeholder = "请输入SQL语句，例如: SELECT * FROM table WHERE id = 1";
-    } else if (formatType == "base64_encode") {
-        placeholder = "请输入要编码的文本";
-    } else if (formatType == "base64_decode") {
-        placeholder = "请输入要解码的Base64字符串";
-    } else if (formatType == "url_encode") {
-        placeholder = "请输入要编码的URL";
-    } else if (formatType == "url_decode") {
-        placeholder = "请输入要解码的URL";
-    } else {
-        placeholder = "请输入需要格式化的文本...";
-    }
-    
-    m_inputTextEdit->setPlaceholderText(placeholder);
-    updateStatus("格式化类型已切换到: " + m_formatTypeCombo->currentText());
-}
 
-/**
- * 处理格式化结果
- */
-void StringFormatter::onFormatResult(bool success, const QString &result, const QString &error)
-{
-    setProcessingState(false);
-    
-    if (success) {
-        m_outputTextEdit->setPlainText(result);
-        updateStatus("格式化完成", "#27ae60");
-        
-        // 滚动到顶部
-        QTextCursor cursor = m_outputTextEdit->textCursor();
-        cursor.movePosition(QTextCursor::Start);
-        m_outputTextEdit->setTextCursor(cursor);
-    } else {
-        m_outputTextEdit->setPlainText("格式化失败: " + error);
-        updateStatus("格式化失败: " + error, "#e74c3c");
-    }
-}
 
-/**
- * 处理网络错误
- */
-void StringFormatter::onNetworkError(const QString &error)
-{
-    setProcessingState(false);
-    m_outputTextEdit->setPlainText("网络错误: " + error);
-    updateStatus("网络错误: " + error, "#e74c3c");
-}
+
 
 /**
  * 验证用户输入
@@ -391,13 +327,71 @@ bool StringFormatter::validateInput()
 }
 
 /**
- * 设置处理状态
+ * 格式化为WHERE条件
  */
-void StringFormatter::setProcessingState(bool isProcessing)
+QString StringFormatter::formatAsWhereCondition(const QStringList &values)
 {
-    m_formatButton->setEnabled(!isProcessing);
-    m_formatTypeCombo->setEnabled(!isProcessing);
-    m_progressBar->setVisible(isProcessing);
+    if (values.isEmpty()) {
+        return QString();
+    }
+    
+    QStringList quotedValues;
+    for (const QString &value : values) {
+        quotedValues << QString("'%1'").arg(value.trimmed());
+    }
+    
+    return QString("(%1)").arg(quotedValues.join(", \n "));
+}
+
+/**
+ * 格式化为VALUES插入语句
+ */
+QString StringFormatter::formatAsValuesInsert(const QStringList &values)
+{
+    if (values.isEmpty()) {
+        return QString();
+    }
+    
+    QString currentDate = QDateTime::currentDateTime().toString("yyyyMMddHHmmss");
+    QString tableName = QString("tm_strcode%1").arg(currentDate);
+    
+    QString result;
+    result += QString("DROP TABLE IF EXISTS %1;\n").arg(tableName);
+    result += QString("CREATE TABLE %1(\n").arg(tableName);
+    result += "    Id BIGINT AUTO_INCREMENT PRIMARY KEY,\n";
+    result += "    StrCode varchar(100),\n";
+    result += "    KEY `1` (StrCode)\n";
+    result += ");\n";
+    result += QString("INSERT INTO %1(StrCode)\n").arg(tableName);
+    result += "VALUES ";
+    
+    QStringList valueLines;
+    for (const QString &value : values) {
+        valueLines << QString("('%1')").arg(value.trimmed());
+    }
+    
+    result += valueLines.join(",\n       ");
+    result += ";";
+    
+    return result;
+}
+
+/**
+ * 解析输入文本为字符串列表
+ */
+QStringList StringFormatter::parseInputText(const QString &input)
+{
+    QStringList lines = input.split('\n', Qt::SkipEmptyParts);
+    QStringList result;
+    
+    for (const QString &line : lines) {
+        QString trimmed = line.trimmed();
+        if (!trimmed.isEmpty()) {
+            result << trimmed;
+        }
+    }
+    
+    return result;
 }
 
 /**

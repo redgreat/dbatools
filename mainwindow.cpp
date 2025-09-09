@@ -161,7 +161,7 @@ void MainWindow::createStatusBar()
 void MainWindow::initializeTools()
 {
     // 创建字符串格式化工具
-    m_stringFormatter = new StringFormatter(m_apiManager, this);
+    m_stringFormatter = new StringFormatter(this);
     m_tabWidget->addTab(m_stringFormatter, "字符串格式化");
     
     // 创建用户管理工具
